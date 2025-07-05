@@ -19,10 +19,11 @@ This is a simple Command Line Interface (CLI) CAD tool with a graphical user int
     sudo apt-get install python3-tk
     ```
 
-2.  **Navigate to the `cli-cad` directory:**
+2.  **Navigate to the project directory:**
     ```bash
-    cd /home/izboxo/cli-cad
+    cd your/project/directory
     ```
+    (Replace `your/project/directory` with the actual path to the `cli-cad` folder.)
 
 3.  **Run the application:**
     ```bash
@@ -56,4 +57,3 @@ This is a simple Command Line Interface (CLI) CAD tool with a graphical user int
 -   `geometry.py`: Contains the `Point`, `Line`, and `Rectangle` classes defining the geometric entities with dimension editing capabilities.
 -   `auto_push.sh`: (Hidden from Git by `.gitignore`) A script for automatic pushing to GitHub (requires `inotify-tools` and Git credential helper setup).
 -   `.gitignore`: Specifies files and directories to be ignored by Git.
-
