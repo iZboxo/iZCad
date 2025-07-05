@@ -182,7 +182,8 @@ class CADApp:
         self.current_drawing_mode = "draw_rectangle_interactive"
         self.interactive_start_point_cad = None
         messagebox.showinfo("Interactive Drawing", "Click on the canvas to define the first corner of the rectangle.")
-        # Unbind pan/zoom events temporarily
+        # Bind drawing events and unbind pan/zoom events
+        self.canvas.bind("<Button-1>", self.on_canvas_click)
         self.canvas.unbind("<ButtonPress-1>")
         self.canvas.unbind("<B1-Motion>")
 
