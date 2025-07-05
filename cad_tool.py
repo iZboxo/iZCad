@@ -254,7 +254,15 @@ class CADApp:
                 
                 if new_value is not None:
                     print(f"New {dim_type} for {target_obj.__class__.__name__} (ID: {obj_id}): {new_value}")
-                    # TODO: Implement actual geometry modification here in the next step
+                    # Apply the new dimension to the object
+                    if dim_type == "length" and isinstance(target_obj, Line):
+                        target_obj.set_length(new_value)
+                    elif dim_type == "width" and isinstance(target_obj, Rectangle):
+                        target_obj.set_width(new_value)
+                    elif dim_type == "height" and isinstance(target_obj, Rectangle):
+                        target_obj.set_height(new_value)
+                    
+                    self.redraw_all() # Redraw the canvas to reflect changes
             else:
                 print(f"Error: Object with ID {obj_id} not found.")
         else:
