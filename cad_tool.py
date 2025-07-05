@@ -64,6 +64,7 @@ class CADApp:
         self.clear_button.grid(row=3, column=0, columnspan=4, pady=10)
 
         self.objects = []
+        self.redraw_all() # Call redraw_all here to draw grid and origin on startup
 
     def cad_to_canvas(self, x_cad, y_cad):
         x_canvas = self.offset_x + x_cad * self.scale
