@@ -8,7 +8,9 @@ This is a simple Command Line Interface (CLI) CAD tool with a graphical user int
 - Pan (move) the canvas using the left mouse button.
 - Zoom in/out using the mouse scroll wheel (zooms towards mouse cursor).
 - Display dimensions (length for lines, width/height for rectangles) with extension lines and arrows.
-- **Edit dimensions interactively:** Click on a dimension text to open a dialog and change its value. The geometry of the object will update accordingly.
+- Edit dimensions interactively: Click on a dimension text to open a dialog and change its value. The geometry of the object will update accordingly.
+- **Background Grid:** A visual grid helps with orientation and precise drawing.
+- **Origin (X/Y Axes):** Clearly marked X and Y axes provide a reference point.
 
 ## How to Run:
 
@@ -57,3 +59,4 @@ This is a simple Command Line Interface (CLI) CAD tool with a graphical user int
 -   `geometry.py`: Contains the `Point`, `Line`, and `Rectangle` classes defining the geometric entities with dimension editing capabilities.
 -   `auto_push.sh`: (Hidden from Git by `.gitignore`) A script for automatic pushing to GitHub (requires `inotify-tools` and Git credential helper setup).
 -   `.gitignore`: Specifies files and directories to be ignored by Git.
+
