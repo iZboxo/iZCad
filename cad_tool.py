@@ -20,13 +20,19 @@ class CADApp:
         self.canvas = tk.Canvas(master, width=self.canvas_width, height=self.canvas_height, bg="white", borderwidth=2, relief="groove")
         self.canvas.pack(side=tk.TOP, fill=tk.BOTH, expand=True, padx=10, pady=10)
 
+        # Bind mouse events for pan and zoom
         self.canvas.bind("<ButtonPress-1>", self.on_button_press)
         self.canvas.bind("<B1-Motion>", self.on_mouse_drag)
         self.canvas.bind("<MouseWheel>", self.on_mouse_wheel)
         self.canvas.bind("<Button-4>", self.on_mouse_wheel)
         self.canvas.bind("<Button-5>", self.on_mouse_wheel)
 
+        # Bind click event for dimension text
         self.canvas.tag_bind("dimension_text", "<Button-1>", self.on_dimension_click)
+
+        # Bind mouse events for interactive drawing
+        self.canvas.bind("<Button-1>", self.on_canvas_click) # Left click for drawing
+        self.canvas.bind("<Motion>", self.on_mouse_move) # Mouse move for preview
 
         self.last_x = 0
         self.last_y = 0
@@ -54,17 +60,25 @@ class CADApp:
         self.y2_entry.grid(row=1, column=3, padx=5, pady=2)
         self.y2_entry.insert(0, "5")
 
-        self.draw_line_button = tk.Button(self.input_frame, text="Draw Line", command=self.draw_line)
+        self.draw_line_button = tk.Button(self.input_frame, text="Draw Line (Manual)", command=self.draw_line_manual)
         self.draw_line_button.grid(row=2, column=0, columnspan=2, pady=10)
 
-        self.draw_rect_button = tk.Button(self.input_frame, text="Draw Rectangle", command=self.draw_rectangle)
+        self.draw_rect_button = tk.Button(self.input_frame, text="Draw Rectangle (Manual)", command=self.draw_rectangle_manual)
         self.draw_rect_button.grid(row=2, column=2, columnspan=2, pady=10)
 
+        self.draw_rect_interactive_button = tk.Button(self.input_frame, text="Draw Rectangle (Interactive)", command=self.activate_interactive_rectangle_drawing)
+        self.draw_rect_interactive_button.grid(row=3, column=0, columnspan=4, pady=10)
+
         self.clear_button = tk.Button(self.input_frame, text="Clear Canvas", command=self.clear_canvas)
-        self.clear_button.grid(row=3, column=0, columnspan=4, pady=10)
+        self.clear_button.grid(row=4, column=0, columnspan=4, pady=10)
 
         self.objects = []
-        self.redraw_all() # Call redraw_all here to draw grid and origin on startup
+        self.current_drawing_mode = "none" # "none", "draw_rectangle_interactive"
+        self.interactive_start_point_cad = None
+        self.preview_rectangle_id = None
+        self.preview_dim_ids = []
+
+        self.redraw_all()
 
     def cad_to_canvas(self, x_cad, y_cad):
         x_canvas = self.offset_x + x_cad * self.scale
@@ -77,17 +91,21 @@ class CADApp:
         return x_cad, y_cad
 
     def on_button_press(self, event):
-        self.last_x = event.x
-        self.last_y = event.y
+        # Only pan if not in drawing mode
+        if self.current_drawing_mode == "none":
+            self.last_x = event.x
+            self.last_y = event.y
 
     def on_mouse_drag(self, event):
-        dx = event.x - self.last_x
-        dy = event.y - self.last_y
-        self.offset_x += dx
-        self.offset_y += dy
-        self.last_x = event.x
-        self.last_y = event.y
-        self.redraw_all()
+        # Only pan if not in drawing mode
+        if self.current_drawing_mode == "none":
+            dx = event.x - self.last_x
+            dy = event.y - self.last_y
+            self.offset_x += dx
+            self.offset_y += dy
+            self.last_x = event.x
+            self.last_y = event.y
+            self.redraw_all()
 
     def on_mouse_wheel(self, event):
         zoom_factor = 1.1
@@ -105,14 +123,82 @@ class CADApp:
 
         self.redraw_all()
 
+    def on_canvas_click(self, event):
+        if self.current_drawing_mode == "draw_rectangle_interactive":
+            clicked_cad_x, clicked_cad_y = self.canvas_to_cad(event.x, event.y)
+            clicked_point = Point(clicked_cad_x, clicked_cad_y)
+
+            if self.interactive_start_point_cad is None:
+                # First click: define start point
+                self.interactive_start_point_cad = clicked_point
+            else:
+                # Second click: define end point and create rectangle
+                rect = Rectangle(self.interactive_start_point_cad, clicked_point)
+                self.objects.append(rect)
+                self.current_drawing_mode = "none"
+                self.interactive_start_point_cad = None
+                self.canvas.delete(self.preview_rectangle_id) # Clear preview
+                for dim_id in self.preview_dim_ids:
+                    self.canvas.delete(dim_id)
+                self.preview_rectangle_id = None
+                self.preview_dim_ids = []
+                self.redraw_all()
+        # Re-bind pan/zoom events after interactive drawing is done
+        self.canvas.bind("<ButtonPress-1>", self.on_button_press)
+        self.canvas.bind("<B1-Motion>", self.on_mouse_drag)
+
+    def on_mouse_move(self, event):
+        if self.current_drawing_mode == "draw_rectangle_interactive" and self.interactive_start_point_cad is not None:
+            # Clear previous preview
+            self.canvas.delete(self.preview_rectangle_id)
+            for dim_id in self.preview_dim_ids:
+                self.canvas.delete(dim_id)
+            self.preview_dim_ids = []
+
+            current_cad_x, current_cad_y = self.canvas_to_cad(event.x, event.y)
+            current_point = Point(current_cad_x, current_cad_y)
+
+            temp_rect = Rectangle(self.interactive_start_point_cad, current_point)
+
+            canvas_x1, canvas_y1 = self.cad_to_canvas(min(temp_rect.p1.x, temp_rect.p2.x), max(temp_rect.p1.y, temp_rect.p2.y))
+            canvas_x2, canvas_y2 = self.cad_to_canvas(max(temp_rect.p1.x, temp_rect.p2.x), min(temp_rect.p1.y, temp_rect.p2.y))
+
+            self.preview_rectangle_id = self.canvas.create_rectangle(canvas_x1, canvas_y1, canvas_x2, canvas_y2, outline="gray", dash=(5, 5))
+
+            # Display dynamic dimensions for preview
+            p_bl = Point(min(temp_rect.p1.x, temp_rect.p2.x), min(temp_rect.p1.y, temp_rect.p2.y))
+            p_br = Point(max(temp_rect.p1.x, temp_rect.p2.x), min(temp_rect.p1.y, temp_rect.p2.y))
+            p_tl = Point(min(temp_rect.p1.x, temp_rect.p2.x), max(temp_rect.p1.y, temp_rect.p2.y))
+
+            # Width dimension
+            dim_id_w = self._draw_linear_dimension_preview(p_bl, p_br, temp_rect.width(), "gray", offset_direction="down")
+            self.preview_dim_ids.append(dim_id_w)
+            # Height dimension
+            dim_id_h = self._draw_linear_dimension_preview(p_bl, p_tl, temp_rect.height(), "gray", offset_direction="left")
+            self.preview_dim_ids.append(dim_id_h)
+
+    def activate_interactive_rectangle_drawing(self):
+        self.current_drawing_mode = "draw_rectangle_interactive"
+        self.interactive_start_point_cad = None
+        messagebox.showinfo("Interactive Drawing", "Click on the canvas to define the first corner of the rectangle.")
+        # Unbind pan/zoom events temporarily
+        self.canvas.unbind("<ButtonPress-1>")
+        self.canvas.unbind("<B1-Motion>")
+
+
     def clear_canvas(self):
         self.canvas.delete("all")
         self.objects = []
+        self.current_drawing_mode = "none"
+        self.interactive_start_point_cad = None
+        self.preview_rectangle_id = None
+        self.preview_dim_ids = []
+        self.redraw_all()
 
     def redraw_all(self):
         self.canvas.delete("all")
-        self._draw_grid() # Draw grid first
-        self._draw_origin() # Draw origin next
+        self._draw_grid()
+        self._draw_origin()
         for obj in self.objects:
             if isinstance(obj, Line):
                 self._draw_line_on_canvas(obj)
@@ -230,12 +316,68 @@ class CADApp:
         text_x = (dim_line_x1 + dim_line_x2) / 2
         text_y = (dim_line_y1 + dim_line_y2) / 2
         
-        self.canvas.create_text(
+        return self.canvas.create_text(
             text_x, text_y - 10,
             text=f"{value:.2f}",
             fill=color,
             font=("Arial", 10, "bold"),
             tags=("dimension_text", f"obj_{id(obj)}", dim_type)
+        )
+
+    def _draw_linear_dimension_preview(self, p_start_cad, p_end_cad, value, color, offset_distance=20, offset_direction="auto"):
+        # This is a simplified version for preview, does not bind to object
+        canvas_x1, canvas_y1 = self.cad_to_canvas(p_start_cad.x, p_start_cad.y)
+        canvas_x2, canvas_y2 = self.cad_to_canvas(p_end_cad.x, p_end_cad.y)
+
+        angle = math.atan2(canvas_y2 - canvas_y1, canvas_x2 - canvas_x1)
+
+        if offset_direction == "auto":
+            if -math.pi/4 < angle <= math.pi/4:
+                offset_dx = 0
+                offset_dy = offset_distance
+            elif math.pi/4 < angle <= 3*math.pi/4:
+                offset_dx = -offset_distance
+                offset_dy = 0
+            elif -3*math.pi/4 < angle <= -math.pi/4:
+                offset_dx = offset_distance
+                offset_dy = 0
+            else:
+                offset_dx = -offset_distance
+                offset_dy = 0
+        elif offset_direction == "down":
+            offset_dx = 0
+            offset_dy = offset_distance
+        elif offset_direction == "up":
+            offset_dx = 0
+            offset_dy = -offset_distance
+        elif offset_direction == "left":
+            offset_dx = -offset_distance
+            offset_dy = 0
+        elif offset_direction == "right":
+            offset_dx = offset_distance
+            offset_dy = 0
+        else:
+            offset_dx = 0
+            offset_dy = offset_distance
+
+        dim_line_x1 = canvas_x1 + offset_dx
+        dim_line_y1 = canvas_y1 + offset_dy
+        dim_line_x2 = canvas_x2 + offset_dx
+        dim_line_y2 = canvas_y2 + offset_dy
+
+        self.canvas.create_line(canvas_x1, canvas_y1, dim_line_x1, dim_line_y1, fill=color, dash=(3, 3))
+        self.canvas.create_line(canvas_x2, canvas_y2, dim_line_x2, dim_line_y2, fill=color, dash=(3, 3))
+
+        self.canvas.create_line(dim_line_x1, dim_line_y1, dim_line_x2, dim_line_y2, fill=color, arrow=tk.BOTH, arrowshape=(8, 10, 3))
+
+        text_x = (dim_line_x1 + dim_line_x2) / 2
+        text_y = (dim_line_y1 + dim_line_y2) / 2
+        
+        return self.canvas.create_text(
+            text_x, text_y - 10,
+            text=f"{value:.2f}",
+            fill=color,
+            font=("Arial", 10, "bold")
         )
 
     def on_dimension_click(self, event):
@@ -287,7 +429,7 @@ class CADApp:
         else:
             print("Clicked item is not a dimension text or missing tags.")
 
-    def draw_line(self):
+    def draw_line_manual(self):
         try:
             x1 = float(self.x1_entry.get())
             y1 = float(self.y1_entry.get())
@@ -303,7 +445,7 @@ class CADApp:
         self.objects.append(line)
         self.redraw_all()
 
-    def draw_rectangle(self):
+    def draw_rectangle_manual(self):
         try:
             x1 = float(self.x1_entry.get())
             y1 = float(self.y1_entry.get())
@@ -318,6 +460,15 @@ class CADApp:
         rect = Rectangle(p1, p2)
         self.objects.append(rect)
         self.redraw_all()
+
+    def activate_interactive_rectangle_drawing(self):
+        self.current_drawing_mode = "draw_rectangle_interactive"
+        self.interactive_start_point_cad = None
+        messagebox.showinfo("Interactive Drawing", "Click on the canvas to define the first corner of the rectangle.")
+        # Unbind pan/zoom events temporarily
+        self.canvas.unbind("<ButtonPress-1>")
+        self.canvas.unbind("<B1-Motion>")
+
 
 if __name__ == "__main__":
     root = tk.Tk()
