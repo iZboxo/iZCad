@@ -7,6 +7,7 @@ from geometry import Point, Line, Rectangle # Import from new file
 
 class CADApp:
     def __init__(self, master):
+        print("CADApp __init__ called.") # Debug print
         self.master = master
         master.title("CLI CAD - Graphical Interface")
 
