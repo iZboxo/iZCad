@@ -31,7 +31,7 @@ class CADApp:
         self.canvas.tag_bind("dimension_text", "<Button-1>", self.on_dimension_click)
 
         # Bind mouse events for interactive drawing
-        self.canvas.bind("<Button-1>", self.on_canvas_click) # Left click for drawing
+        # self.canvas.bind("<Button-1>", self.on_canvas_click) # Left click for drawing - will be bound dynamically
         self.canvas.bind("<Motion>", self.on_mouse_move) # Mouse move for preview
 
         self.last_x = 0
