@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 import tkinter as tk
-from tkinter import messagebox
+from tkinter import messagebox, simpledialog # Import simpledialog
 import math
 from geometry import Point, Line, Rectangle # Import from new file
 
@@ -26,6 +26,9 @@ class CADApp:
         self.canvas.bind("<MouseWheel>", self.on_mouse_wheel) # For Windows/macOS
         self.canvas.bind("<Button-4>", self.on_mouse_wheel) # For Linux (scroll up)
         self.canvas.bind("<Button-5>", self.on_mouse_wheel) # For Linux (scroll down)
+
+        # Bind click event for dimension text
+        self.canvas.tag_bind("dimension_text", "<Button-1>", self.on_dimension_click)
 
         self.last_x = 0
         self.last_y = 0
@@ -122,7 +125,7 @@ class CADApp:
         self.canvas.create_line(canvas_x1, canvas_y1, canvas_x2, canvas_y2, fill="blue", width=2)
 
         # Draw dimension for line
-        self._draw_linear_dimension(line_obj.start, line_obj.end, line_obj.length(), "red")
+        self._draw_linear_dimension(line_obj.start, line_obj.end, line_obj.length(), "red", obj=line_obj, dim_type="length")
 
     def _draw_rectangle_on_canvas(self, rect_obj):
         print("Drawing rectangle on canvas.") # Debug print
@@ -140,12 +143,12 @@ class CADApp:
 
         # Draw dimensions for width and height
         # Width dimension (horizontal)
-        self._draw_linear_dimension(p_bl, p_br, rect_obj.width(), "purple", offset_direction="down")
+        self._draw_linear_dimension(p_bl, p_br, rect_obj.width(), "purple", offset_direction="down", obj=rect_obj, dim_type="width")
         # Height dimension (vertical)
-        self._draw_linear_dimension(p_bl, p_tl, rect_obj.height(), "purple", offset_direction="left")
+        self._draw_linear_dimension(p_bl, p_tl, rect_obj.height(), "purple", offset_direction="left", obj=rect_obj, dim_type="height")
 
 
-    def _draw_linear_dimension(self, p_start_cad, p_end_cad, value, color, offset_distance=20, offset_direction="auto"):
+    def _draw_linear_dimension(self, p_start_cad, p_end_cad, value, color, offset_distance=20, offset_direction="auto", obj=None, dim_type=None):
         # Convert CAD points to canvas points
         canvas_x1, canvas_y1 = self.cad_to_canvas(p_start_cad.x, p_start_cad.y)
         canvas_x2, canvas_y2 = self.cad_to_canvas(p_end_cad.x, p_end_cad.y)
@@ -200,7 +203,62 @@ class CADApp:
         # Draw dimension text
         text_x = (dim_line_x1 + dim_line_x2) / 2
         text_y = (dim_line_y1 + dim_line_y2) / 2
-        self.canvas.create_text(text_x, text_y - 10, text=f"{value:.2f}", fill=color, font=("Arial", 10, "bold"))
+        
+        # Create text with tags for interactivity
+        self.canvas.create_text(
+            text_x, text_y - 10, 
+            text=f"{value:.2f}", 
+            fill=color, 
+            font=("Arial", 10, "bold"),
+            tags=("dimension_text", f"obj_{id(obj)}", dim_type) # Add tags for object reference and dimension type
+        )
+
+    def on_dimension_click(self, event):
+        # Get the ID of the clicked canvas item
+        item_id = self.canvas.find_closest(event.x, event.y)[0]
+        
+        # Get tags associated with the item
+        tags = self.canvas.gettags(item_id)
+        
+        # Find the object ID and dimension type from tags
+        obj_id = None
+        dim_type = None
+        for tag in tags:
+            if tag.startswith("obj_"):
+                obj_id = int(tag.split("_")[1])
+            elif tag in ["length", "width", "height"]:
+                dim_type = tag
+        
+        if obj_id and dim_type:
+            # Find the actual object in self.objects list
+            target_obj = None
+            for obj in self.objects:
+                if id(obj) == obj_id:
+                    target_obj = obj
+                    break
+            
+            if target_obj:
+                current_value = 0.0
+                if dim_type == "length" and isinstance(target_obj, Line):
+                    current_value = target_obj.length()
+                elif dim_type == "width" and isinstance(target_obj, Rectangle):
+                    current_value = target_obj.width()
+                elif dim_type == "height" and isinstance(target_obj, Rectangle):
+                    current_value = target_obj.height()
+                
+                new_value = simpledialog.askfloat(
+                    f"Edit {dim_type.capitalize()}", 
+                    f"Enter new {dim_type} for {target_obj.__class__.__name__}:", 
+                    initialvalue=current_value
+                )
+                
+                if new_value is not None:
+                    print(f"New {dim_type} for {target_obj.__class__.__name__} (ID: {obj_id}): {new_value}")
+                    # TODO: Implement actual geometry modification here in the next step
+            else:
+                print(f"Error: Object with ID {obj_id} not found.")
+        else:
+            print("Clicked item is not a dimension text or missing tags.")
 
 
     def draw_line(self):
