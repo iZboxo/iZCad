@@ -116,6 +116,35 @@ class CADApp:
             elif isinstance(obj, Rectangle):
                 self._draw_rectangle_on_canvas(obj)
 
+    def _draw_line_on_canvas(self, line_obj):
+        canvas_x1, canvas_y1 = self.cad_to_canvas(line_obj.start.x, line_obj.start.y)
+        canvas_x2, canvas_y2 = self.cad_to_canvas(line_obj.end.x, line_obj.end.y)
+        self.canvas.create_line(canvas_x1, canvas_y1, canvas_x2, canvas_y2, fill="blue", width=2)
+
+        # Draw dimension for line
+        self._draw_linear_dimension(line_obj.start, line_obj.end, line_obj.length(), "red")
+
+    def _draw_rectangle_on_canvas(self, rect_obj):
+        print("Drawing rectangle on canvas.") # Debug print
+        # Get the four corner points of the rectangle in CAD coordinates
+        p_bl = Point(min(rect_obj.p1.x, rect_obj.p2.x), min(rect_obj.p1.y, rect_obj.p2.y)) # Bottom-left
+        p_br = Point(max(rect_obj.p1.x, rect_obj.p2.x), min(rect_obj.p1.y, rect_obj.p2.y)) # Bottom-right
+        p_tl = Point(min(rect_obj.p1.x, rect_obj.p2.x), max(rect_obj.p1.y, rect_obj.p2.y)) # Top-left
+        p_tr = Point(max(rect_obj.p1.x, rect_obj.p2.x), max(rect_obj.p1.y, rect_obj.p2.y)) # Top-right
+
+        # Convert to canvas coordinates for drawing
+        canvas_x1, canvas_y1 = self.cad_to_canvas(p_bl.x, p_tl.y) # Top-left corner of bounding box
+        canvas_x2, canvas_y2 = self.cad_to_canvas(p_br.x, p_bl.y) # Bottom-right corner of bounding box
+
+        self.canvas.create_rectangle(canvas_x1, canvas_y1, canvas_x2, canvas_y2, outline="green", width=2)
+
+        # Draw dimensions for width and height
+        # Width dimension (horizontal)
+        self._draw_linear_dimension(p_bl, p_br, rect_obj.width(), "purple", offset_direction="down")
+        # Height dimension (vertical)
+        self._draw_linear_dimension(p_bl, p_tl, rect_obj.height(), "purple", offset_direction="left")
+
+
     def _draw_linear_dimension(self, p_start_cad, p_end_cad, value, color, offset_distance=20, offset_direction="auto"):
         # Convert CAD points to canvas points
         canvas_x1, canvas_y1 = self.cad_to_canvas(p_start_cad.x, p_start_cad.y)
