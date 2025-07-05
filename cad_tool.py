@@ -462,16 +462,7 @@ class CADApp:
         self.objects.append(rect)
         self.redraw_all()
 
-    def activate_interactive_rectangle_drawing(self):
-        self.current_drawing_mode = "draw_rectangle_interactive"
-        self.interactive_start_point_cad = None
-        messagebox.showinfo("Interactive Drawing", "Click on the canvas to define the first corner of the rectangle.")
-        # Unbind pan/zoom events temporarily
-        self.canvas.unbind("<ButtonPress-1>")
-        self.canvas.unbind("<B1-Motion>")
-
-
-if __name__ == "__main__":
+    if __name__ == "__main__":
     root = tk.Tk()
     app = CADApp(root)
     root.mainloop()
