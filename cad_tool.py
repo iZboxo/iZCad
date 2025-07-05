@@ -260,7 +260,7 @@ class CADApp:
         self._draw_linear_dimension(line_obj.start, line_obj.end, line_obj.length(), "red", obj=line_obj, dim_type="length")
 
     def _draw_rectangle_on_canvas(self, rect_obj):
-        print("Drawing rectangle on canvas.")
+        print(f"_draw_rectangle_on_canvas called for {rect_obj}")
         p_bl = Point(min(rect_obj.p1.x, rect_obj.p2.x), min(rect_obj.p1.y, rect_obj.p2.y))
         p_br = Point(max(rect_obj.p1.x, rect_obj.p2.x), min(rect_obj.p1.y, rect_obj.p2.y))
         p_tl = Point(min(rect_obj.p1.x, rect_obj.p2.x), max(rect_obj.p1.y, rect_obj.p2.y))
@@ -270,6 +270,7 @@ class CADApp:
         canvas_x2, canvas_y2 = self.cad_to_canvas(p_br.x, p_bl.y)
 
         self.canvas.create_rectangle(canvas_x1, canvas_y1, canvas_x2, canvas_y2, outline="green", width=2)
+        print(f"Canvas coordinates for rectangle: ({canvas_x1}, {canvas_y1}) to ({canvas_x2}, {canvas_y2})")
 
         self._draw_linear_dimension(p_bl, p_br, rect_obj.width(), "purple", offset_direction="down", obj=rect_obj, dim_type="width")
         self._draw_linear_dimension(p_bl, p_tl, rect_obj.height(), "purple", offset_direction="left", obj=rect_obj, dim_type="height")
