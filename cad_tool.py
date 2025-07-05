@@ -143,7 +143,8 @@ class CADApp:
                 self.preview_rectangle_id = None
                 self.preview_dim_ids = []
                 self.redraw_all()
-                # Re-bind pan/zoom events after interactive drawing is done
+                # Unbind drawing events and re-bind pan/zoom events
+                self.canvas.unbind("<Button-1>")
                 self.canvas.bind("<ButtonPress-1>", self.on_button_press)
                 self.canvas.bind("<B1-Motion>", self.on_mouse_drag)
 
