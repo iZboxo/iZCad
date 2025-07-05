@@ -2,6 +2,7 @@
 
 import tkinter as tk
 from tkinter import messagebox
+import math
 from geometry import Point, Line, Rectangle # Import from new file
 
 class CADApp:
@@ -84,10 +85,22 @@ class CADApp:
 
     def on_mouse_wheel(self, event):
         zoom_factor = 1.1 # Zoom in/out by 10%
+        # Get mouse position in CAD coordinates before zoom
+        mouse_x_cad_before = (event.x - self.offset_x) / self.scale
+        mouse_y_cad_before = (self.offset_y - event.y) / self.scale
+
         if event.num == 5 or event.delta < 0: # Scroll down (zoom out) -> Linux event.num 5, Windows/macOS event.delta < 0
             self.scale /= zoom_factor
         elif event.num == 4 or event.delta > 0: # Scroll up (zoom in) -> Linux event.num 4, Windows/macOS event.delta > 0
             self.scale *= zoom_factor
+        
+        # Adjust offset to zoom towards mouse cursor
+        mouse_x_cad_after = (event.x - self.offset_x) / self.scale
+        mouse_y_cad_after = (self.offset_y - event.y) / self.scale
+
+        self.offset_x += (mouse_x_cad_before - mouse_x_cad_after) * self.scale
+        self.offset_y -= (mouse_y_cad_before - mouse_y_cad_after) * self.scale
+
         self.redraw_all()
 
     def clear_canvas(self):
@@ -102,29 +115,63 @@ class CADApp:
             elif isinstance(obj, Rectangle):
                 self._draw_rectangle_on_canvas(obj)
 
-    def _draw_line_on_canvas(self, line_obj):
-        canvas_x1, canvas_y1 = self.cad_to_canvas(line_obj.start.x, line_obj.start.y)
-        canvas_x2, canvas_y2 = self.cad_to_canvas(line_obj.end.x, line_obj.end.y)
-        self.canvas.create_line(canvas_x1, canvas_y1, canvas_x2, canvas_y2, fill="blue", width=2)
+    def _draw_linear_dimension(self, p_start_cad, p_end_cad, value, color, offset_distance=20, offset_direction="auto"):
+        # Convert CAD points to canvas points
+        canvas_x1, canvas_y1 = self.cad_to_canvas(p_start_cad.x, p_start_cad.y)
+        canvas_x2, canvas_y2 = self.cad_to_canvas(p_end_cad.x, p_end_cad.y)
 
-        mid_x = (canvas_x1 + canvas_x2) / 2
-        mid_y = (canvas_y1 + canvas_y2) / 2
-        length_text = f"{line_obj.length():.2f}"
-        self.canvas.create_text(mid_x, mid_y - 10, text=length_text, fill="red", font=("Arial", 10, "bold"))
+        # Calculate angle of the line
+        angle = math.atan2(canvas_y2 - canvas_y1, canvas_x2 - canvas_x1)
 
-    def _draw_rectangle_on_canvas(self, rect_obj):
-        canvas_x1, canvas_y1 = self.cad_to_canvas(min(rect_obj.p1.x, rect_obj.p2.x), max(rect_obj.p1.y, rect_obj.p2.y))
-        canvas_x2, canvas_y2 = self.cad_to_canvas(max(rect_obj.p1.x, rect_obj.p2.x), min(rect_obj.p1.y, rect_obj.p2.y))
-        self.canvas.create_rectangle(canvas_x1, canvas_y1, canvas_x2, canvas_y2, outline="green", width=2)
+        # Determine offset for dimension line
+        if offset_direction == "auto":
+            # Default offset direction based on angle
+            if -math.pi/4 < angle <= math.pi/4: # Horizontal or near horizontal
+                offset_dx = 0
+                offset_dy = offset_distance
+            elif math.pi/4 < angle <= 3*math.pi/4: # Vertical or near vertical (up-right)
+                offset_dx = -offset_distance
+                offset_dy = 0
+            elif -3*math.pi/4 < angle <= -math.pi/4: # Vertical or near vertical (down-left)
+                offset_dx = offset_distance
+                offset_dy = 0
+            else: # Vertical or near vertical (up-left or down-right)
+                offset_dx = -offset_distance
+                offset_dy = 0
+        elif offset_direction == "down":
+            offset_dx = 0
+            offset_dy = offset_distance
+        elif offset_direction == "up":
+            offset_dx = 0
+            offset_dy = -offset_distance
+        elif offset_direction == "left":
+            offset_dx = -offset_distance
+            offset_dy = 0
+        elif offset_direction == "right":
+            offset_dx = offset_distance
+            offset_dy = 0
+        else:
+            offset_dx = 0
+            offset_dy = offset_distance # Default to down
 
-        mid_x = (canvas_x1 + canvas_x2) / 2
-        mid_y = (canvas_y1 + canvas_y2) / 2
+        # Calculate points for dimension line and extension lines
+        dim_line_x1 = canvas_x1 + offset_dx
+        dim_line_y1 = canvas_y1 + offset_dy
+        dim_line_x2 = canvas_x2 + offset_dx
+        dim_line_y2 = canvas_y2 + offset_dy
 
-        width_text = f"W: {rect_obj.width():.2f}"
-        height_text = f"H: {rect_obj.height():.2f}"
+        # Draw extension lines
+        self.canvas.create_line(canvas_x1, canvas_y1, dim_line_x1, dim_line_y1, fill=color, dash=(3, 3))
+        self.canvas.create_line(canvas_x2, canvas_y2, dim_line_x2, dim_line_y2, fill=color, dash=(3, 3))
 
-        self.canvas.create_text(mid_x, mid_y - 20, text=width_text, fill="purple", font=("Arial", 10, "bold"))
-        self.canvas.create_text(mid_x, mid_y + 20, text=height_text, fill="purple", font=("Arial", 10, "bold"))
+        # Draw dimension line
+        self.canvas.create_line(dim_line_x1, dim_line_y1, dim_line_x2, dim_line_y2, fill=color, arrow=tk.BOTH, arrowshape=(8, 10, 3))
+
+        # Draw dimension text
+        text_x = (dim_line_x1 + dim_line_x2) / 2
+        text_y = (dim_line_y1 + dim_line_y2) / 2
+        self.canvas.create_text(text_x, text_y - 10, text=f"{value:.2f}", fill=color, font=("Arial", 10, "bold"))
+
 
     def draw_line(self):
         try:
