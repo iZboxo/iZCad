@@ -131,10 +131,14 @@ class CADApp:
             if self.interactive_start_point_cad is None:
                 # First click: define start point
                 self.interactive_start_point_cad = clicked_point
+                print(f"First click at CAD: {clicked_point.x:.2f}, {clicked_point.y:.2f}")
             else:
                 # Second click: define end point and create rectangle
+                print(f"Second click at CAD: {clicked_point.x:.2f}, {clicked_point.y:.2f}")
                 rect = Rectangle(self.interactive_start_point_cad, clicked_point)
+                print(f"Created Rectangle: {rect}")
                 self.objects.append(rect)
+                print(f"Objects after adding rectangle: {self.objects}")
                 self.current_drawing_mode = "none"
                 self.interactive_start_point_cad = None
                 self.canvas.delete(self.preview_rectangle_id) # Clear preview
