@@ -44,6 +44,7 @@ This is a simple Command Line Interface (CLI) CAD tool with a graphical user int
     2.  Click on the canvas to define the first corner of the rectangle.
     3.  Move the mouse to see a real-time preview of the rectangle and its dimensions.
     4.  Click again to define the second corner and finalize the rectangle.
+    *   **Note:** While in interactive drawing mode, pan and zoom functions are temporarily disabled. They will re-enable automatically after the rectangle is drawn.
 
 -   **Panning:**
     -   Click and drag the left mouse button on the canvas to move the view.
@@ -66,3 +67,4 @@ This is a simple Command Line Interface (CLI) CAD tool with a graphical user int
 -   `geometry.py`: Contains the `Point`, `Line`, and `Rectangle` classes defining the geometric entities with dimension editing capabilities.
 -   `auto_push.sh`: (Hidden from Git by `.gitignore`) A script for automatic pushing to GitHub (requires `inotify-tools` and Git credential helper setup).
 -   `.gitignore`: Specifies files and directories to be ignored by Git.
+
